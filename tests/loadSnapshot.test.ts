@@ -40,6 +40,22 @@ describe("loadSnapshot", () => {
     expect(result).toEqual({ ok: false, reason: "Two nodes share an id." });
   });
 
+  it("formats other schema failures with path and remaining count", () => {
+    const bad = JSON.parse(read("valid.json")) as { nodes: Array<{ kind: string }> };
+    bad.nodes[0].kind = "workflow";
+    const result = loadSnapshot(JSON.stringify(bad));
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toMatch(/^nodes\.0\.kind: /);
+      expect(result.reason).not.toBe("The file is not JSON.");
+      expect(result.reason).not.toBe("schemaVersion is missing or is not the number 1.");
+      expect(result.reason).not.toBe("project is missing.");
+      expect(result.reason).not.toBe("nodes is missing.");
+      expect(result.reason).not.toBe("edges is missing.");
+      expect(result.reason).not.toBe("Two nodes share an id.");
+    }
+  });
+
   it("publishes schemaVersion const 1", () => {
     const schema = JSON.parse(readFileSync(new URL("../schema/canvas-snapshot.schema.json", import.meta.url), "utf8"));
     expect(schema.properties.schemaVersion.const).toBe(1);

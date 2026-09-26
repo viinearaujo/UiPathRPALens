@@ -11,6 +11,7 @@ type Screen =
 export function App() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [screen, setScreen] = useState<Screen>({ kind: "picker" });
+  const [loadId, setLoadId] = useState(0);
   const readBytes = useCallback(async () => null, []);
 
   async function openFile(file: File) {
@@ -19,6 +20,7 @@ export function App() {
       setScreen({ kind: "refusal", reason: loaded.reason, fileName: file.name });
       return;
     }
+    setLoadId((id) => id + 1);
     setScreen({ kind: "canvas", snapshot: loaded.snapshot });
   }
 
@@ -57,6 +59,7 @@ export function App() {
       ) : null}
       {screen.kind === "canvas" ? (
         <CanvasView
+          key={loadId}
           snapshot={screen.snapshot}
           openedPath={null}
           readBytes={readBytes}

@@ -21,8 +21,10 @@ import { UnconnectedGroupView, WorkflowNodeView, type WorkflowNodeData } from ".
 import type { CanvasSnapshot, SnapshotEdge } from "./schema";
 
 const nodeTypes = { workflow: WorkflowNodeView, unconnected: UnconnectedGroupView };
+const LABEL_STACK_OFFSET = 20;
 
 type LabeledEdgeData = SnapshotEdge & {
+  pairIndex?: number;
   onLabelSelect?: (edgeId: string) => void;
 };
 
@@ -48,6 +50,8 @@ function LabeledEdge({
     sourcePosition,
     targetPosition,
   });
+  const pairIndex = edgeData?.pairIndex ?? 0;
+  const labelOffsetY = pairIndex * LABEL_STACK_OFFSET;
   return (
     <>
       <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />
@@ -57,7 +61,7 @@ function LabeledEdge({
             className="edge-label nodrag nopan"
             style={{
               position: "absolute",
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY + labelOffsetY}px)`,
               pointerEvents: "all",
             }}
             onClick={(event) => {
@@ -103,6 +107,7 @@ function CanvasBody({
 }) {
   const map = useMemo(() => analyzeMap(snapshot), [snapshot]);
   const [positions, setPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const [layoutReady, setLayoutReady] = useState(false);
   const [stale, setStale] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("");
   const [selection, setSelection] = useState<Selection>({ kind: "none" });
@@ -110,6 +115,7 @@ function CanvasBody({
 
   useEffect(() => {
     let cancelled = false;
+    setLayoutReady(false);
     const connected = map.nodes.filter((node) => !node.unconnected);
     const connectedIds = new Set(connected.map((node) => node.id));
     const layoutEdges = map.edges
@@ -121,6 +127,7 @@ function CanvasBody({
     ).then((next) => {
       if (!cancelled) {
         setPositions(next);
+        setLayoutReady(true);
       }
     });
     void staleNodeIds(snapshot, openedPath, readBytes).then((next) => {
@@ -163,8 +170,12 @@ function CanvasBody({
   for (const node of connected) {
     flowNodes.push(toFlowNode(node, positions.get(node.id) ?? { x: 0, y: 0 }, dimmed(node.id)));
   }
+  const pairIndexByKey = new Map<string, number>();
   const flowEdges: Edge[] = map.edges.map((edge, index) => {
     const id = edgeId(edge, index);
+    const pairKey = `${edge.sourceWorkflow}\0${edge.targetWorkflow}`;
+    const pairIndex = pairIndexByKey.get(pairKey) ?? 0;
+    pairIndexByKey.set(pairKey, pairIndex + 1);
     return {
       id,
       type: "labeled",
@@ -175,6 +186,7 @@ function CanvasBody({
       style: { stroke: "#8b93a7", strokeDasharray: edge.isResolved ? undefined : "6 4" },
       data: {
         ...edge,
+        pairIndex,
         onLabelSelect: (edgeId: string) => setSelection({ kind: "edge", id: edgeId }),
       } satisfies LabeledEdgeData,
     };
@@ -210,24 +222,26 @@ function CanvasBody({
       </div>
       <div className="canvas-body">
         <div className="map-wrap">
-          <ReactFlow
-            nodes={flowNodes}
-            edges={flowEdges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            fitView
-            colorMode="dark"
-            style={{ background: "#12161d", width: "100%", height: 520 }}
-            onNodeClick={(_, node) => {
-              if (node.id !== "unconnected-group") {
-                selectNode(node.id);
-              }
-            }}
-            onEdgeClick={(_, edge) => setSelection({ kind: "edge", id: edge.id })}
-          >
-            <Background />
-            <Controls />
-          </ReactFlow>
+          {layoutReady ? (
+            <ReactFlow
+              nodes={flowNodes}
+              edges={flowEdges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              fitView
+              colorMode="dark"
+              style={{ background: "#12161d", width: "100%", height: 520 }}
+              onNodeClick={(_, node) => {
+                if (node.id !== "unconnected-group") {
+                  selectNode(node.id);
+                }
+              }}
+              onEdgeClick={(_, edge) => setSelection({ kind: "edge", id: edge.id })}
+            >
+              <Background />
+              <Controls />
+            </ReactFlow>
+          ) : null}
         </div>
         <aside className="side-panel">
           {selectedNode ? (
@@ -279,6 +293,10 @@ function edgeId(edge: SnapshotEdge, index: number): string {
   return `${edge.sourceWorkflow}->${edge.targetWorkflow}#${index}`;
 }
 
+function uniqueIds(ids: string[]): string[] {
+  return [...new Set(ids)];
+}
+
 function NodePanel({
   node,
   stale,
@@ -291,8 +309,8 @@ function NodePanel({
   onSelect: (id: string) => void;
 }) {
   const snapshot = node.snapshot;
-  const callers = edges.filter((edge) => edge.targetWorkflow === node.id).map((edge) => edge.sourceWorkflow);
-  const callees = edges.filter((edge) => edge.sourceWorkflow === node.id).map((edge) => edge.targetWorkflow);
+  const callers = uniqueIds(edges.filter((edge) => edge.targetWorkflow === node.id).map((edge) => edge.sourceWorkflow));
+  const callees = uniqueIds(edges.filter((edge) => edge.sourceWorkflow === node.id).map((edge) => edge.targetWorkflow));
   const explanation = snapshot && snapshot.explanation.trim().length > 0
     ? snapshot.explanation
     : "Explanation was not written.";

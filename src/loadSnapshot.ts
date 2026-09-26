@@ -25,7 +25,15 @@ export function loadSnapshot(text: string): LoadResult {
   }
   const result = canvasSnapshotSchema.safeParse(parsed);
   if (!result.success) {
-    return { ok: false, reason: result.error.issues.map((issue) => issue.message).join(" ") };
+    const issues = result.error.issues;
+    const first = issues[0];
+    const path = first.path.map(String).join(".");
+    const head = path.length > 0 ? `${path}: ${first.message}` : first.message;
+    const extra = issues.length - 1;
+    return {
+      ok: false,
+      reason: extra > 0 ? `${head} (and ${extra} more)` : head,
+    };
   }
   const seen = new Set<string>();
   for (const node of result.data.nodes) {
