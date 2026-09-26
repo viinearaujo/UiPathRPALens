@@ -1,0 +1,37 @@
+:root {
+  color-scheme: dark;
+  --page: #0e1116;
+  --map: #12161d;
+  --panel: #1a1f29;
+  --text: #e8eaed;
+  --muted: #aeb6c2;
+  --line: #8b93a7;
+  --badge: #243049;
+}
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  background: var(--page);
+  color: var(--text);
+  font-family: "Segoe UI", sans-serif;
+}
+
+.picker {
+  min-height: 100%;
+  padding: 32px;
+  background: var(--page);
+  color: var(--text);
+}
+
+.picker-input {
+  color: var(--text);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
