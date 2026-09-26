@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "canvas-snapshot.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schemaVersion", "generatedAt", "generator", "project", "nodes", "edges"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "generatedAt": { "type": "string" },
+    "generator": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["mcpVersion"],
+      "properties": { "mcpVersion": { "type": "string" } }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "entryPoint", "additionalEntryPoints", "overview"],
+      "properties": {
+        "name": { "type": "string" },
+        "entryPoint": { "type": ["string", "null"] },
+        "additionalEntryPoints": { "type": "array", "items": { "type": "string" } },
+        "overview": { "type": "string" }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "kind", "sha256", "arguments", "hasExceptionHandler", "parseError", "explanation", "decisions"],
+        "properties": {
+          "id": { "type": "string" },
+          "kind": { "enum": ["xaml", "coded"] },
+          "sha256": { "type": "string" },
+          "arguments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": ["name", "direction", "type"],
+              "properties": {
+                "name": { "type": "string" },
+                "direction": { "type": "string" },
+                "type": { "type": "string" }
+              }
+            }
+          },
+          "hasExceptionHandler": { "type": "boolean" },
+          "parseError": { "type": ["string", "null"] },
+          "explanation": { "type": "string" },
+          "decisions": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["sourceWorkflow", "targetWorkflow", "displayName", "isResolved", "argumentMappings"],
+        "properties": {
+          "sourceWorkflow": { "type": "string" },
+          "targetWorkflow": { "type": "string" },
+          "displayName": { "type": "string" },
+          "isResolved": { "type": "boolean" },
+          "argumentMappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": ["direction", "targetArgument", "expression"],
+              "properties": {
+                "direction": { "type": "string" },
+                "targetArgument": { "type": "string" },
+                "expression": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
