@@ -36,6 +36,21 @@ describe("analyzeMap", () => {
     ]);
   });
 
+  it("adds one synthetic node when multiple edges reference the same missing target", () => {
+    const snapshot = structuredClone(load("valid.json"));
+    snapshot.edges.push({
+      sourceWorkflow: "Child.xaml",
+      targetWorkflow: "Missing.xaml",
+      displayName: "Also missing",
+      isResolved: false,
+      argumentMappings: [],
+    });
+    const map = analyzeMap(snapshot);
+    const missing = map.nodes.filter((node) => node.id === "Missing.xaml" && node.missing);
+    expect(missing).toHaveLength(1);
+    expect(missing[0]).toMatchObject({ id: "Missing.xaml", missing: true, snapshot: null });
+  });
+
   it("marks a self-loop as a cycle member", () => {
     const loaded = loadSnapshot(JSON.stringify({
       schemaVersion: 1,

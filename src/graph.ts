@@ -26,7 +26,8 @@ export function analyzeMap(snapshot: CanvasSnapshot): AnalyzedMap {
     for (const endpoint of [edge.sourceWorkflow, edge.targetWorkflow]) {
       if (known.has(endpoint)) {
         incident.add(endpoint);
-      } else if (seenMissing.add(endpoint)) {
+      } else if (!seenMissing.has(endpoint)) {
+        seenMissing.add(endpoint);
         missingIds.push(endpoint);
       }
     }
