@@ -22,7 +22,9 @@ import type { CanvasSnapshot, SnapshotEdge } from "./schema";
 
 const nodeTypes = { workflow: WorkflowNodeView, unconnected: UnconnectedGroupView };
 
-const edgeLabelSelect = { current: null as ((id: string) => void) | null };
+type LabeledEdgeData = SnapshotEdge & {
+  onLabelSelect?: (edgeId: string) => void;
+};
 
 function LabeledEdge({
   id,
@@ -35,7 +37,9 @@ function LabeledEdge({
   style,
   markerEnd,
   label,
+  data,
 }: EdgeProps) {
+  const edgeData = data as LabeledEdgeData | undefined;
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -58,7 +62,7 @@ function LabeledEdge({
             }}
             onClick={(event) => {
               event.stopPropagation();
-              edgeLabelSelect.current?.(id);
+              edgeData?.onLabelSelect?.(id);
             }}
           >
             {label}
@@ -103,7 +107,6 @@ function CanvasBody({
   const [filter, setFilter] = useState("");
   const [selection, setSelection] = useState<Selection>({ kind: "none" });
   const flow = useReactFlow();
-  edgeLabelSelect.current = (id) => setSelection({ kind: "edge", id });
 
   useEffect(() => {
     let cancelled = false;
@@ -160,16 +163,22 @@ function CanvasBody({
   for (const node of connected) {
     flowNodes.push(toFlowNode(node, positions.get(node.id) ?? { x: 0, y: 0 }, dimmed(node.id)));
   }
-  const flowEdges: Edge[] = map.edges.map((edge, index) => ({
-    id: edgeId(edge, index),
-    type: "labeled",
-    source: edge.sourceWorkflow,
-    target: edge.targetWorkflow,
-    label: edge.displayName,
-    markerEnd: { type: MarkerType.ArrowClosed, color: "#8b93a7" },
-    style: { stroke: "#8b93a7", strokeDasharray: edge.isResolved ? undefined : "6 4" },
-    data: edge,
-  }));
+  const flowEdges: Edge[] = map.edges.map((edge, index) => {
+    const id = edgeId(edge, index);
+    return {
+      id,
+      type: "labeled",
+      source: edge.sourceWorkflow,
+      target: edge.targetWorkflow,
+      label: edge.displayName,
+      markerEnd: { type: MarkerType.ArrowClosed, color: "#8b93a7" },
+      style: { stroke: "#8b93a7", strokeDasharray: edge.isResolved ? undefined : "6 4" },
+      data: {
+        ...edge,
+        onLabelSelect: (edgeId: string) => setSelection({ kind: "edge", id: edgeId }),
+      } satisfies LabeledEdgeData,
+    };
+  });
 
   function selectNode(id: string) {
     setSelection({ kind: "node", id });
